@@ -1,85 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { parquetReadObjects } from 'hyparquet'
+import {
+  getResultsForPointsRace,
+  getLatestCompletedPointsRace,
+} from '@/lib/nascar-cdn'
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const { leagueId, raceNumber } = body
 
-    if (!leagueId || !raceNumber) {
+    // leagueId is still accepted so the rest of your UI doesn’t break,
+    // even though this route only returns the results (it doesn’t write to DB).
+    if (!raceNumber && raceNumber !== 0) {
       return NextResponse.json(
-        { error: 'Missing leagueId or raceNumber' },
+        { error: 'Missing raceNumber' },
         { status: 400 }
       )
     }
 
-    // Parquet is the working public source (CSV is currently 404)
-    const parquetRes = await fetch(
-      'https://nascar.kylegrealis.com/cup_series.parquet',
-      {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; FantasyNASCAR/1.0)',
-          Accept: 'application/octet-stream,*/*',
-        },
-        cache: 'no-store',
-      }
-    )
-
-    if (!parquetRes.ok) {
-      return NextResponse.json(
-        {
-          error: `Could not download NASCAR data (status ${parquetRes.status}). Try again later or enter points manually.`,
-        },
-        { status: 500 }
-      )
-    }
-
-    const arrayBuffer = await parquetRes.arrayBuffer()
-    const rows = await parquetReadObjects({ file: arrayBuffer })
-
     const raceNum = Number(raceNumber)
+    const year = 2026
 
-    const results = rows
-      .filter((row: any) => {
-        const season = Number(row.Season ?? row.season)
-        const race = Number(row.Race ?? row.race)
-        return season === 2026 && race === raceNum
-      })
-      .map((row: any) => {
-  const driver = String(row.Driver ?? row.driver ?? '').trim()
-  const car = String(row.Car ?? row.car ?? '').trim()
-  const finish = Number(row.Finish ?? row.finish ?? 99) || 99
-  const points = Number(row.Pts ?? row.points ?? row.Points ?? 0) || 0
-  const stage1 = Number(row.S1 ?? row.s1 ?? 0) || 0
-  const stage2 = Number(row.S2 ?? row.s2 ?? 0) || 0
-  const stage3 = Number(row.S3 ?? row.s3 ?? 0) || 0
+    // Use the official NASCAR CDN instead of kyleGrealis
+    const parsed = await getResultsForPointsRace(raceNum, year)
 
-  return {
-    driver,
-    car,
-    finish,
-    points,
-    stage1,
-    stage2,
-    stage3,
-    stagePoints: stage1 + stage2 + stage3, // keep total for compatibility
-  }
-})
-      .filter((r: any) => r.driver)
-
-    if (results.length === 0) {
+    if (!parsed) {
       return NextResponse.json(
         {
-          error: `No results found for Race ${raceNumber} in the 2026 data. The weekly update may not have run yet (usually Monday morning).`,
+          error: `No results found for Race ${raceNumber}. The race may not be finished yet, or results are not posted.`,
         },
         { status: 404 }
       )
     }
 
+    // Convert to the exact shape your existing UI expects
+    const results = parsed.results.map((r) => {
+      // Reconstruct stage1/2/3 from the stageResults array if needed
+      let stage1 = 0
+      let stage2 = 0
+      let stage3 = 0
+
+      for (const stage of parsed.stageResults) {
+        const entry = stage.results.find(
+          (s) => s.driver_id === r.driverId || s.driver_fullname === r.driverName
+        )
+        if (entry) {
+          if (stage.stage_number === 1) stage1 = entry.stage_points
+          if (stage.stage_number === 2) stage2 = entry.stage_points
+          if (stage.stage_number === 3) stage3 = entry.stage_points
+        }
+      }
+
+      return {
+        driver: r.driverName,
+        car: r.carNumber,
+        finish: r.finish,
+        points: r.points,           // official NASCAR points (finish + stages)
+        stage1,
+        stage2,
+        stage3,
+        stagePoints: r.stagePoints, // total stage points
+      }
+    })
+
     return NextResponse.json({
       success: true,
       results,
       count: results.length,
+      // Extra info you can use later if you want
+      raceName: parsed.raceName,
+      trackName: parsed.trackName,
+      source: 'cf.nascar.com',
     })
   } catch (err: any) {
     console.error('Import error:', err)
