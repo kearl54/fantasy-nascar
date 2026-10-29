@@ -33,9 +33,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Convert to the exact shape your existing UI expects
+        // Convert to the exact shape your existing UI expects
     const results = parsed.results.map((r) => {
-      // Reconstruct stage1/2/3 from the stageResults array if needed
+      // Get stage *finishing positions* (not points)
       let stage1 = 0
       let stage2 = 0
       let stage3 = 0
@@ -45,9 +45,9 @@ export async function POST(req: NextRequest) {
           (s) => s.driver_id === r.driverId || s.driver_fullname === r.driverName
         )
         if (entry) {
-          if (stage.stage_number === 1) stage1 = entry.stage_points
-          if (stage.stage_number === 2) stage2 = entry.stage_points
-          if (stage.stage_number === 3) stage3 = entry.stage_points
+          if (stage.stage_number === 1) stage1 = entry.finishing_position
+          if (stage.stage_number === 2) stage2 = entry.finishing_position
+          if (stage.stage_number === 3) stage3 = entry.finishing_position
         }
       }
 
@@ -55,11 +55,11 @@ export async function POST(req: NextRequest) {
         driver: r.driverName,
         car: r.carNumber,
         finish: r.finish,
-        points: r.points,           // official NASCAR points (finish + stages)
-        stage1,
+        points: r.points,           // official NASCAR points (still correct)
+        stage1,                     // now the stage finishing position
         stage2,
         stage3,
-        stagePoints: r.stagePoints, // total stage points
+        stagePoints: r.stagePoints, // keep total stage points if anything still uses it
       }
     })
 
