@@ -67,16 +67,17 @@ export async function GET(req: NextRequest) {
         continue
       }
 
-      // Submitted ranked lists
-      const { data: picks } = await supabase
-        .from('picks')
-        .select('user_id, ranked_drivers')
+      // Submitted ranked lists (correct table + column)
+      const { data: submissions } = await supabase
+        .from('submissions')
+        .select('user_id, ranked_driver_ids')
         .eq('league_id', league.id)
         .eq('race_number', raceNumber)
 
-      const picksByUser: {[userId: string]: string[]} = {}
-      ;(picks || []).forEach((p: any) => {
-        picksByUser[p.user_id] = p.ranked_drivers || []
+      const picksByUser: { [userId: string]: string[] } = {}
+      ;(submissions || []).forEach((s: any) => {
+        // ranked_driver_ids is an array of numbers → convert to strings for the Set
+        picksByUser[s.user_id] = (s.ranked_driver_ids || []).map(String)
       })
 
       const taken = new Set<string>()
@@ -97,20 +98,20 @@ export async function GET(req: NextRequest) {
         // Non-submitter / exhausted list: highest remaining by Cup standings
         if (!assigned) {
           for (const d of rankedDrivers) {
-            if (!taken.has(d.id)) {
-              assigned = d.id
+            const id = String(d.id)
+            if (!taken.has(id)) {
+              assigned = id
               break
             }
           }
         }
-
         if (assigned) {
           taken.add(assigned)
           assignments.push({
             league_id: league.id,
             race_number: raceNumber,
             user_id: po.user_id,
-            driver_id: assigned,
+            driver_id: Number(assigned),
           })
         }
       }
