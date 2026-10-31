@@ -931,7 +931,6 @@ const standings = (() => {
     )}
   </div>
 )}
-<p className="text-xs text-red-500">isCommissioner: {String(isCommissioner)}</p>
   
   {myTeamName && (
     <div className="mt-2 flex items-center gap-2 flex-wrap">
