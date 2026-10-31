@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/import-results",
       "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/cron/advance-race",
+      "schedule": "0 9 * * 2"
     }
   ]
 }
