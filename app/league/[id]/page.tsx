@@ -49,8 +49,6 @@ function LeagueContent() {
   const [myTeamName, setMyTeamName] = useState('')
   const [editingTeamName, setEditingTeamName] = useState(false)
   const [newTeamName, setNewTeamName] = useState('')
-  const [editingLeagueName, setEditingLeagueName] = useState(false)
-  const [newLeagueName, setNewLeagueName] = useState('')
 
   const getFinishPoints = (pos: number): number => {
     if (pos === 1) return 55
@@ -78,7 +76,6 @@ function LeagueContent() {
       return
     }
     setLeague(leagueData)
-	setNewLeagueName(leagueData.name || '')
 
     if (user && leagueData.commissioner_id === user.id) {
       setIsCommissioner(true)
@@ -417,40 +414,14 @@ setResultsAssignments(assignData || [])
     setProcessing(false)
   }
   
-  const saveTeamName = async () => {
+    const saveTeamName = async () => {
     if (!currentUser || !newTeamName.trim()) return
+
     const { error } = await supabase
       .from('league_members')
       .update({ team_name: newTeamName.trim() })
       .eq('league_id', leagueId)
       .eq('user_id', currentUser.id)
-    if (error) {
-      setError(error.message)
-    } else {
-      setMyTeamName(newTeamName.trim())
-      setEditingTeamName(false)
-      // Refresh members so the name updates everywhere
-      const { data: membersData } = await supabase
-        .from('league_members')
-        .select('*, profiles(*)')
-        .eq('league_id', leagueId)
-      if (membersData) setMembers(membersData)
-    }
-  }
-
-  const saveLeagueName = async () => {
-    if (!isCommissioner || !newLeagueName.trim()) return
-    const { error } = await supabase
-      .from('leagues')
-      .update({ name: newLeagueName.trim() })
-      .eq('id', leagueId)
-    if (error) {
-      setError(error.message)
-    } else {
-      setLeague((prev: any) => ({ ...prev, name: newLeagueName.trim() }))
-      setEditingLeagueName(false)
-    }
-  }
 
     if (error) {
       setError(error.message)
@@ -903,47 +874,7 @@ const standings = (() => {
         <div className="bg-white rounded-2xl shadow-sm border p-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
-  {isCommissioner && editingLeagueName ? (
-  <div className="flex items-center gap-2 flex-wrap">
-    <input
-      type="text"
-      value={newLeagueName}
-      onChange={(e) => setNewLeagueName(e.target.value)}
-      className="border rounded-lg px-3 py-1.5 text-2xl font-bold"
-      maxLength={50}
-    />
-    <button
-      onClick={saveLeagueName}
-      className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm"
-    >
-      Save
-    </button>
-    <button
-      onClick={() => {
-        setEditingLeagueName(false)
-        setNewLeagueName(league.name)
-      }}
-      className="bg-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-sm"
-    >
-      Cancel
-    </button>
-  </div>
-) : (
-  <div className="flex items-center gap-2 flex-wrap">
-    <h1 className="text-3xl font-bold text-gray-900">{league.name}</h1>
-    {isCommissioner && (
-      <button
-        onClick={() => {
-          setNewLeagueName(league.name)
-          setEditingLeagueName(true)
-        }}
-        className="text-blue-600 text-sm hover:underline"
-      >
-        Edit
-      </button>
-    )}
-  </div>
-)}
+  <h1 className="text-3xl font-bold text-gray-900">{league.name}</h1>
   
   {myTeamName && (
     <div className="mt-2 flex items-center gap-2 flex-wrap">
