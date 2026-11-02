@@ -54,14 +54,17 @@ export type ParsedRaceResults = {
   trackName: string;
   /** Official sequential points-paying race number (1-36). Null if non-points. */
   pointsRaceNumber: number | null;
-  results: Array<{
+    results: Array<{
     finish: number;
     driverName: string;
     driverId: number;
     carNumber: string;
-    points: number; // official Cup points (finish + stages)
+    points: number;
     playoffPoints: number;
-    stagePoints: number; // sum of stage points for convenience
+    stagePoints: number;
+    stage1: number; // finishing position in stage 1 (0 if none)
+    stage2: number;
+    stage3: number;
     lapsLed: number;
     status: string;
   }>;
@@ -163,28 +166,42 @@ export function parseWeekendFeed(
     throw new Error("weekend_race missing from feed");
   }
 
-  const stageResults: NascarStageResult[] = wr.stage_results ?? [];
+    const stageResults: NascarStageResult[] = wr.stage_results ?? [];
 
-  // Build a quick map of total stage points per driver_id
+  // Total stage points + stage finishing positions per driver
   const stagePtsMap = new Map<number, number>();
+  const stagePosMap = new Map<number, { stage1: number; stage2: number; stage3: number }>();
+
   for (const stage of stageResults) {
     for (const s of stage.results ?? []) {
       const prev = stagePtsMap.get(s.driver_id) ?? 0;
       stagePtsMap.set(s.driver_id, prev + (s.stage_points ?? 0));
+
+      const pos = stagePosMap.get(s.driver_id) ?? { stage1: 0, stage2: 0, stage3: 0 };
+      if (stage.stage_number === 1) pos.stage1 = s.finishing_position ?? 0;
+      if (stage.stage_number === 2) pos.stage2 = s.finishing_position ?? 0;
+      if (stage.stage_number === 3) pos.stage3 = s.finishing_position ?? 0;
+      stagePosMap.set(s.driver_id, pos);
     }
   }
 
-  const results = (wr.results ?? []).map((r: NascarResult) => ({
-    finish: r.finishing_position,
-    driverName: r.driver_fullname,
-    driverId: r.driver_id,
-    carNumber: String(r.car_number),
-    points: r.points_earned ?? 0,
-    playoffPoints: r.playoff_points_earned ?? 0,
-    stagePoints: stagePtsMap.get(r.driver_id) ?? 0,
-    lapsLed: r.laps_led ?? 0,
-    status: r.finishing_status ?? "Unknown",
-  }));
+  const results = (wr.results ?? []).map((r: NascarResult) => {
+    const stages = stagePosMap.get(r.driver_id) ?? { stage1: 0, stage2: 0, stage3: 0 };
+    return {
+      finish: r.finishing_position,
+      driverName: r.driver_fullname,
+      driverId: r.driver_id,
+      carNumber: String(r.car_number),
+      points: r.points_earned ?? 0,
+      playoffPoints: r.playoff_points_earned ?? 0,
+      stagePoints: stagePtsMap.get(r.driver_id) ?? 0,
+      stage1: stages.stage1,
+      stage2: stages.stage2,
+      stage3: stages.stage3,
+      lapsLed: r.laps_led ?? 0,
+      status: r.finishing_status ?? "Unknown",
+    };
+  });
 
   // Sort by finish just in case
   results.sort((a: any, b: any) => a.finish - b.finish);
