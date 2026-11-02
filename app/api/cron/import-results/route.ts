@@ -71,12 +71,12 @@ export async function GET(req: NextRequest) {
 
       // Check if this race already has scores
       const { data: existing } = await supabase
-        .from('assignments')
-        .select('id, points_earned')
-        .eq('league_id', league.id)
-        .eq('race_number', raceNumber)
-        .not('points_earned', 'is', null)
-        .limit(1)
+		.from('assignments')
+		.select('id, points_earned')
+		.eq('league_id', league.id)
+		.eq('race_number', raceNumber)
+		.gt('points_earned', 0)          // only treat real scores as “already scored”
+		.limit(1)
 
       if (existing && existing.length > 0) {
         results.push({
