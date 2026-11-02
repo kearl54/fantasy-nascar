@@ -127,14 +127,16 @@ export async function GET(req: NextRequest) {
         if (!result) continue
 
         const { error } = await supabase
-          .from('assignments')
-          .update({
-            finish_position: result.finish,
-            points_earned: result.points,
-            stage_points: result.stagePoints,
-            // add stage1/2/3 columns if you have them
-          })
-          .eq('id', a.id)
+		  .from('assignments')
+		  .update({
+			finish_position: result.finish,
+			points_earned: result.points,
+			stage_points: result.stagePoints,
+			stage1_points: result.stage1 ?? 0,   // stage finishing position
+			stage2_points: result.stage2 ?? 0,
+			stage3_points: result.stage3 ?? 0,
+		  })
+		  .eq('id', a.id)
 
         if (!error) updated++
       }
