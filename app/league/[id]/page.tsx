@@ -845,7 +845,7 @@ const standings = (() => {
 
   const finalRaceResultsCount = (allAssignments || assignments || []).filter(
   (a: any) =>
-    (a.race_number === endRace || currentRaceNumForStandings >= endRace) &&
+    a.race_number === endRace &&
     a.finish_position
   ).length
 
