@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
         parsed.results.map((r) => [normalizeName(r.driverName), r])
       )
 
-      // Get the assignments for this race
+            // Get the assignments for this race
       const { data: assignments } = await supabase
         .from('assignments')
         .select('id, driver_id, user_id')
@@ -108,22 +108,41 @@ export async function GET(req: NextRequest) {
         continue
       }
 
-      // Need driver names to match
+      // Need driver names + car numbers to match
       const { data: drivers } = await supabase
         .from('drivers')
-        .select('id, name')
+        .select('id, name, car_number')
 
       const driverNameById = new Map(
         (drivers || []).map((d) => [d.id, d.name])
+      )
+      const driverCarById = new Map(
+        (drivers || []).map((d) => [d.id, String(d.car_number ?? '').replace(/^0+/, '')])
+      )
+
+      // Also build a car-number lookup from the official results
+      const byCar = new Map(
+        parsed.results.map((r) => [
+          String(r.carNumber ?? '').replace(/^0+/, ''),
+          r,
+        ])
       )
 
       let updated = 0
 
       for (const a of assignments) {
         const driverName = driverNameById.get(a.driver_id)
-        if (!driverName) continue
+        const carNumber = driverCarById.get(a.driver_id)
 
-        const result = byName.get(normalizeName(driverName))
+        // Try name first, then fall back to car number
+        let result = driverName
+          ? byName.get(normalizeName(driverName))
+          : undefined
+
+        if (!result && carNumber) {
+          result = byCar.get(carNumber)
+        }
+
         if (!result) continue
 
         const { error } = await supabase
