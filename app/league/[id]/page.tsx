@@ -1196,40 +1196,48 @@ const standings = (() => {
         </div>
 
         {/* 4. Point Standings */}
-        <div className="bg-white rounded-2xl shadow-sm border p-6 overflow-x-auto">
-          <h2 className="text-xl font-bold mb-4">Point Standings</h2>
-          <table className="w-full text-base">
-            <thead>
-              <tr className="border-b text-left text-gray-500">
-                <th className="pb-2 pr-2 w-8">#</th>
-                <th className="pb-2 pr-4">Team</th>
-                <th className="pb-2 pr-4 text-right">Pts</th>
-                <th className="pb-2 pr-4 text-right">Wins</th>
-                <th className="pb-2 pr-4 text-right">Top 5</th>
-                <th className="pb-2 text-right">Top 10</th>
-              </tr>
-            </thead>
-            <tbody>
-              {standings.map((s, idx) => (
-                <tr key={s.id} className="border-b last:border-0">
-                  <td className="py-2.5 pr-2 text-gray-400">{idx + 1}</td>
-                  <td className="py-2.5 pr-4 font-medium">
-				   {s.team_name}
-				   {isChaseFormat && currentRaceNumForStandings > regularSeasonEnd && s.inChase && (
-					 <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
-					   Chase
-					 </span>
-				   )}
-				</td>
-                  <td className="py-2.5 pr-4 text-right font-bold">{s.displayPoints}</td>
-                  <td className="py-2.5 pr-4 text-right">{s.wins}</td>
-                  <td className="py-2.5 pr-4 text-right">{s.top5s}</td>
-                  <td className="py-2.5 text-right">{s.top10s}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+				<div className="bg-white rounded-2xl shadow-sm border p-6 overflow-x-auto">
+				  <h2 className="text-xl font-bold mb-4">Point Standings</h2>
+				  <table className="w-full text-base">
+					<thead>
+					  <tr className="border-b text-left text-gray-500">
+						<th className="pb-2 pr-2 w-8">#</th>
+						<th className="pb-2 pr-4">Team</th>
+						<th className="pb-2 pr-4 text-right">Pts</th>
+						<th className="pb-2 pr-4 text-right">Behind</th>
+						<th className="pb-2 pr-4 text-right">Wins</th>
+						<th className="pb-2 pr-4 text-right">Top 5</th>
+						<th className="pb-2 text-right">Top 10</th>
+					  </tr>
+					</thead>
+					<tbody>
+					  {standings.map((s, idx) => {
+						const leaderPts = standings[0]?.displayPoints ?? 0
+						const behind = idx === 0 ? null : (s.displayPoints ?? 0) - leaderPts
+						return (
+						  <tr key={s.id} className="border-b last:border-0">
+							<td className="py-2.5 pr-2 text-gray-400">{idx + 1}</td>
+							<td className="py-2.5 pr-4 font-medium">
+							  {s.team_name}
+							  {isChaseFormat && currentRaceNumForStandings > regularSeasonEnd && s.inChase && (
+								<span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
+								  Chase
+								</span>
+							  )}
+							</td>
+							<td className="py-2.5 pr-4 text-right font-bold">{s.displayPoints}</td>
+							<td className="py-2.5 pr-4 text-right text-gray-500">
+							  {behind === null ? '—' : behind}
+							</td>
+							<td className="py-2.5 pr-4 text-right">{s.wins}</td>
+							<td className="py-2.5 pr-4 text-right">{s.top5s}</td>
+							<td className="py-2.5 text-right">{s.top10s}</td>
+						  </tr>
+						)
+					  })}
+					</tbody>
+				  </table>
+				</div>
 
         {/* 5. Members */}
 <div className="bg-white rounded-2xl shadow-sm border p-6">
