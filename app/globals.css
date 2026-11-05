@@ -97,3 +97,52 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Force readable dark mode for hardcoded Tailwind classes */
+@media (prefers-color-scheme: dark) {
+  .bg-white {
+    background-color: #111827 !important; /* gray-900 */
+  }
+  .bg-gray-50,
+  .bg-gray-100 {
+    background-color: #030712 !important; /* gray-950 */
+  }
+  .bg-gray-200 {
+    background-color: #1f2937 !important; /* gray-800 */
+  }
+  .bg-amber-50 {
+    background-color: #1c1917 !important; /* stone-900 */
+  }
+
+  .text-gray-900,
+  .text-gray-800 {
+    color: #f3f4f6 !important; /* gray-100 */
+  }
+  .text-gray-700,
+  .text-gray-600 {
+    color: #d1d5db !important; /* gray-300 */
+  }
+  .text-gray-500,
+  .text-gray-400 {
+    color: #9ca3af !important; /* gray-400 */
+  }
+
+  .border,
+  .border-gray-200,
+  .border-gray-100 {
+    border-color: #374151 !important; /* gray-700 */
+  }
+  .border-amber-200 {
+    border-color: #78716c !important;
+  }
+
+  /* Keep primary action buttons readable */
+  .bg-blue-600,
+  .bg-green-600,
+  .bg-red-600,
+  .bg-indigo-600,
+  .bg-purple-600,
+  .bg-amber-700 {
+    color: #fff !important;
+  }
+}
