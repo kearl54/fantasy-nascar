@@ -984,12 +984,22 @@ const standings = (() => {
     )}
   </p>
 </div>
-            <div className="text-base text-gray-600 space-y-1">
-              <div><span className="font-medium">Teams:</span> {members.length} / {league.max_teams}</div>
-              <div><span className="font-medium">Current:</span> {raceLabel}</div>
-            </div>
-                    </div>
-        </div>
+         <div className="text-base text-gray-600 space-y-1">
+		  <div>
+			<span className="font-medium">Teams:</span> {members.length} / {league.max_teams ?? league.team_count ?? 20}
+		  </div>
+		  <div>
+			<span className="font-medium">Current:</span> {raceLabel}
+		  </div>
+		  <div className="pt-2">
+			<Link
+			  href={`/league/${leagueId}/live`}
+			  className="inline-block text-sm font-medium bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700"
+			>
+			  Live Feed
+			</Link>
+		  </div>
+		</div>
 
 {seasonComplete && podium.length > 0 && (
   <div className="bg-gradient-to-b from-amber-50 to-white rounded-2xl shadow-sm border border-amber-200 p-6 mb-6">
