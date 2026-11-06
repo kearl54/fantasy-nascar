@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -25,7 +25,7 @@ type SessionInfo = {
   flagState: number | null
 }
 
-export default function LivePage() {
+function LiveContent() {
   const params = useParams()
   const leagueId = params.id as string
   const supabase = createClient()
@@ -209,5 +209,19 @@ export default function LivePage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function LivePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          Loading live feed…
+        </div>
+      }
+    >
+      <LiveContent />
+    </Suspense>
   )
 }
