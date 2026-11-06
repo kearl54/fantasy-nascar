@@ -31,9 +31,10 @@ export async function GET(req: NextRequest) {
 
     // Drivers ranked by current Cup standings (for non-submitters)
     const { data: drivers } = await supabase
-      .from('drivers')
-      .select('id, name, car_number, standings_rank')
-      .order('standings_rank', { ascending: true, nullsFirst: false })
+	  .from('drivers')
+	  .select('id, name, car_number, standings_rank')
+	  .eq('is_active', true)
+	  .order('standings_rank', { ascending: true, nullsFirst: false })
 
     const rankedDrivers = (drivers || []).filter(d => d.standings_rank != null)
     const results: any[] = []
@@ -74,47 +75,72 @@ export async function GET(req: NextRequest) {
         .eq('league_id', league.id)
         .eq('race_number', raceNumber)
 
-      const picksByUser: { [userId: string]: string[] } = {}
+     // Map user → ranked driver ids (as numbers)
+      const submissionMap = new Map<string, number[]>()
       ;(submissions || []).forEach((s: any) => {
-        // ranked_driver_ids is an array of numbers → convert to strings for the Set
-        picksByUser[s.user_id] = (s.ranked_driver_ids || []).map(String)
+        const ids = (s.ranked_driver_ids || []).map((id: any) => Number(id))
+        submissionMap.set(s.user_id, ids)
       })
 
-      const taken = new Set<string>()
-      const assignments: any[] = []
+      const availableDriverIds = new Set(
+        (drivers || []).map((d) => d.id)
+      )
+      const finalAssignments: any[] = []
+      const nonSubmitters: { user_id: string }[] = []
 
-      // Assign in pick order
+      // Pass 1: only teams that submitted a ranked list (in pick order)
       for (const po of pickOrder) {
-        const ranked = picksByUser[po.user_id] || []
-        let assigned: string | null = null
+        const rankedIds = submissionMap.get(po.user_id) || []
+        if (rankedIds.length === 0) {
+          nonSubmitters.push(po)
+          continue
+        }
 
-        for (const driverId of ranked) {
-          if (!taken.has(driverId)) {
-            assigned = driverId
+        let assignedDriverId: number | null = null
+        for (const driverId of rankedIds) {
+          if (availableDriverIds.has(driverId)) {
+            assignedDriverId = driverId
+            availableDriverIds.delete(driverId)
             break
           }
         }
 
-        // Non-submitter / exhausted list: highest remaining by Cup standings
-        if (!assigned) {
-          for (const d of rankedDrivers) {
-            const id = String(d.id)
-            if (!taken.has(id)) {
-              assigned = id
-              break
-            }
-          }
-        }
-        if (assigned) {
-          taken.add(assigned)
-          assignments.push({
+        if (assignedDriverId != null) {
+          finalAssignments.push({
             league_id: league.id,
             race_number: raceNumber,
             user_id: po.user_id,
-            driver_id: Number(assigned),
+            driver_id: assignedDriverId,
+            points_earned: 0,
           })
+        } else {
+          // Submitted but every ranked driver was already taken
+          nonSubmitters.push(po)
         }
       }
+
+      // Pass 2: non-submitters (and exhausted lists) get remaining by Cup standings
+      const remainingDrivers = (drivers || [])
+        .filter((d) => availableDriverIds.has(d.id))
+        .sort((a, b) => {
+          const rankA = a.standings_rank ?? 9999
+          const rankB = b.standings_rank ?? 9999
+          return rankA - rankB
+        })
+
+      nonSubmitters.forEach((po, idx) => {
+        if (remainingDrivers[idx]) {
+          finalAssignments.push({
+            league_id: league.id,
+            race_number: raceNumber,
+            user_id: po.user_id,
+            driver_id: remainingDrivers[idx].id,
+            points_earned: 0,
+          })
+        }
+      })
+
+      const assignments = finalAssignments
 
       if (assignments.length > 0) {
         const { error: insertError } = await supabase
