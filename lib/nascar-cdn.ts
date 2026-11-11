@@ -301,8 +301,7 @@ export async function getWeekendSchedule(
   const wr = feed?.weekend_race?.[0]
   const schedule: any[] = Array.isArray(wr?.schedule) ? wr.schedule : []
 
-  const practices: { start: string; name: string }[] = []
-  const duels: { start: string; name: string }[] = []
+  const practices: { start: string }[] = []
   let qualifying: string | null = null
   let race: string | null = null
 
@@ -310,10 +309,9 @@ export async function getWeekendSchedule(
     const name = String(e.event_name || '').toLowerCase()
     const start = e.start_time_utc as string | undefined
     if (!start) continue
-
     const runType = Number(e.run_type)
 
-    // Skip non-session noise
+    // Skip non-sessions
     if (
       name.includes('meeting') ||
       name.includes('hauler') ||
@@ -322,37 +320,30 @@ export async function getWeekendSchedule(
       name.includes('grid') ||
       name.includes('access') ||
       name.includes('briefing') ||
+      name.includes('drawing') || // Daytona random drawing, not qualifying
       name.includes('report for')
     ) {
       continue
     }
 
-    if (name.includes('duel')) {
-      duels.push({ start, name })
-      continue
-    }
-
     if (runType === 1 || name.includes('practice')) {
-      practices.push({ start, name })
+      practices.push({ start })
       continue
     }
 
-    if (runType === 2 || name.includes('qualifying')) {
+    // Real qualifying only
+    if (runType === 2 || (name.includes('qualifying') && !name.includes('drawing'))) {
       if (!qualifying) qualifying = start
       continue
     }
 
-    if (runType === 3 || (name === 'race' || name.startsWith('race '))) {
+    if (runType === 3 || name === 'race' || name.startsWith('race ')) {
       if (!race) race = start
       continue
     }
   }
 
-  // Sort practices / duels by time
   practices.sort(
-    (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
-  )
-  duels.sort(
     (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
   )
 
@@ -360,11 +351,7 @@ export async function getWeekendSchedule(
 
   if (practices.length <= 1) {
     if (practices[0]) {
-      rows.push({
-        key: 'practice',
-        label: 'Practice',
-        startUtc: practices[0].start,
-      })
+      rows.push({ key: 'practice', label: 'Practice', startUtc: practices[0].start })
     }
   } else {
     practices.forEach((p, i) => {
@@ -377,36 +364,42 @@ export async function getWeekendSchedule(
   }
 
   if (qualifying) {
-    rows.push({
-      key: 'qualifying',
-      label: 'Qualifying',
-      startUtc: qualifying,
+    rows.push({ key: 'qualifying', label: 'Qualifying', startUtc: qualifying })
+  }
+
+  // Daytona Duels are separate race_list entries, not weekend schedule rows
+  const track = (match.race.track_name || '').toLowerCase()
+  const isDaytona500 =
+    pointsRaceNumber === 1 ||
+    (track.includes('daytona') &&
+      (match.race.race_name || '').toLowerCase().includes('500'))
+
+  if (isDaytona500) {
+    const duelRaces = list
+      .filter((r) => {
+        const n = (r.race_name || '').toLowerCase()
+        const t = (r.track_name || '').toLowerCase()
+        return t.includes('daytona') && n.includes('duel')
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.race_date).getTime() - new Date(b.race_date).getTime()
+      )
+
+    duelRaces.forEach((d, i) => {
+      rows.push({
+        key: `duel_${i + 1}`,
+        label: `Duel ${i + 1}`,
+        startUtc: d.race_date,
+      })
     })
   }
 
-  duels.forEach((d, i) => {
-    // Prefer "Duel 1" / "Duel 2" from name when possible
-    let label = `Duel ${i + 1}`
-    if (d.name.includes('duel 1') || d.name.includes('duel i')) label = 'Duel 1'
-    if (d.name.includes('duel 2') || d.name.includes('duel ii')) label = 'Duel 2'
-    rows.push({
-      key: `duel_${i + 1}`,
-      label,
-      startUtc: d.start,
-    })
-  })
-
-  // Race time: prefer schedule race, else race_list race_date
   const raceStart = race || match.race.race_date || null
   if (raceStart) {
-    rows.push({
-      key: 'race',
-      label: 'Race',
-      startUtc: raceStart,
-    })
+    rows.push({ key: 'race', label: 'Race', startUtc: raceStart })
   }
 
-  // Final chronological order (Daytona: Practice1, Qual, Duels, Practice2…, Race)
   rows.sort(
     (a, b) => new Date(a.startUtc).getTime() - new Date(b.startUtc).getTime()
   )
