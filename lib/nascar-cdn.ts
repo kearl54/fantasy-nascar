@@ -268,3 +268,152 @@ export async function getLatestCompletedPointsRace(
   }
   return null;
 }
+
+export type ScheduleRow = {
+  key: string
+  label: string
+  startUtc: string
+}
+
+export type WeekendScheduleItem = {
+  trackName: string | null
+  raceName: string | null
+  rows: ScheduleRow[]
+}
+
+/**
+ * Cup Series only. Returns ordered practice / qualifying / duels / race times.
+ * Daytona Speedweeks will include multiple practices + Duel 1 / Duel 2 when present.
+ */
+export async function getWeekendSchedule(
+  pointsRaceNumber: number,
+  year: number = 2026
+): Promise<WeekendScheduleItem | null> {
+  const list = await fetchRaceList(year, 1) // Cup only
+  const withNumbers = list.map((r) => ({
+    race: r,
+    num: mapToPointsRaceNumber(r, list),
+  }))
+  const match = withNumbers.find((x) => x.num === pointsRaceNumber)
+  if (!match) return null
+
+  const feed = await fetchWeekendFeed(year, 1, match.race.race_id)
+  const wr = feed?.weekend_race?.[0]
+  const schedule: any[] = Array.isArray(wr?.schedule) ? wr.schedule : []
+
+  const practices: { start: string; name: string }[] = []
+  const duels: { start: string; name: string }[] = []
+  let qualifying: string | null = null
+  let race: string | null = null
+
+  for (const e of schedule) {
+    const name = String(e.event_name || '').toLowerCase()
+    const start = e.start_time_utc as string | undefined
+    if (!start) continue
+
+    const runType = Number(e.run_type)
+
+    // Skip non-session noise
+    if (
+      name.includes('meeting') ||
+      name.includes('hauler') ||
+      name.includes('garage') ||
+      name.includes('intro') ||
+      name.includes('grid') ||
+      name.includes('access') ||
+      name.includes('briefing') ||
+      name.includes('report for')
+    ) {
+      continue
+    }
+
+    if (name.includes('duel')) {
+      duels.push({ start, name })
+      continue
+    }
+
+    if (runType === 1 || name.includes('practice')) {
+      practices.push({ start, name })
+      continue
+    }
+
+    if (runType === 2 || name.includes('qualifying')) {
+      if (!qualifying) qualifying = start
+      continue
+    }
+
+    if (runType === 3 || (name === 'race' || name.startsWith('race '))) {
+      if (!race) race = start
+      continue
+    }
+  }
+
+  // Sort practices / duels by time
+  practices.sort(
+    (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
+  )
+  duels.sort(
+    (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
+  )
+
+  const rows: ScheduleRow[] = []
+
+  if (practices.length <= 1) {
+    if (practices[0]) {
+      rows.push({
+        key: 'practice',
+        label: 'Practice',
+        startUtc: practices[0].start,
+      })
+    }
+  } else {
+    practices.forEach((p, i) => {
+      rows.push({
+        key: `practice_${i + 1}`,
+        label: `Practice ${i + 1}`,
+        startUtc: p.start,
+      })
+    })
+  }
+
+  if (qualifying) {
+    rows.push({
+      key: 'qualifying',
+      label: 'Qualifying',
+      startUtc: qualifying,
+    })
+  }
+
+  duels.forEach((d, i) => {
+    // Prefer "Duel 1" / "Duel 2" from name when possible
+    let label = `Duel ${i + 1}`
+    if (d.name.includes('duel 1') || d.name.includes('duel i')) label = 'Duel 1'
+    if (d.name.includes('duel 2') || d.name.includes('duel ii')) label = 'Duel 2'
+    rows.push({
+      key: `duel_${i + 1}`,
+      label,
+      startUtc: d.start,
+    })
+  })
+
+  // Race time: prefer schedule race, else race_list race_date
+  const raceStart = race || match.race.race_date || null
+  if (raceStart) {
+    rows.push({
+      key: 'race',
+      label: 'Race',
+      startUtc: raceStart,
+    })
+  }
+
+  // Final chronological order (Daytona: Practice1, Qual, Duels, Practice2…, Race)
+  rows.sort(
+    (a, b) => new Date(a.startUtc).getTime() - new Date(b.startUtc).getTime()
+  )
+
+  return {
+    trackName: wr?.track_name || match.race.track_name || null,
+    raceName: wr?.race_name || match.race.race_name || null,
+    rows,
+  }
+}
