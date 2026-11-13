@@ -2,6 +2,10 @@
   "crons": [
     {
       "path": "/api/cron/process-picks",
+      "schedule": "0 12 * * 4"
+    },
+    {
+      "path": "/api/cron/process-picks",
       "schedule": "0 12 * * 5"
     },
     {

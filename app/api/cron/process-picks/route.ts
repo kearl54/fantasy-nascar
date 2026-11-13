@@ -41,6 +41,17 @@ export async function GET(req: NextRequest) {
 
     for (const league of leagues) {
       const raceNumber = league.current_race || league.start_race || 1
+	  
+	  // Thursday 12:00 UTC cron = 7:00 AM ET (EST). Only auto-assign for Daytona (Race 1).
+      const dayUtc = new Date().getUTCDay() // 0=Sun ... 4=Thu
+      if (dayUtc === 4 && raceNumber !== 1) {
+        results.push({
+          leagueId: league.id,
+          raceNumber,
+          status: 'skipped_not_daytona_thursday',
+        })
+        continue
+      }
 
       // Skip if already has assignments for this race
       const { data: existing } = await supabase
