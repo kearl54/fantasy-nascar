@@ -12,6 +12,7 @@ function LeagueContent() {
 
   const [league, setLeague] = useState<any>(null)
   const [raceInfo, setRaceInfo] = useState<any>(null)
+  const [weekendSchedule, setWeekendSchedule] = useState<any>(null)
   const [members, setMembers] = useState<any[]>([])
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [pickOrder, setPickOrder] = useState<any[]>([])
@@ -91,6 +92,18 @@ function LeagueContent() {
       .eq('race_number', currentRace)
       .single()
     setRaceInfo(raceData)
+	
+	const currentRaceNumForSchedule = leagueData.current_race || leagueData.start_race
+    try {
+      const schedRes = await fetch(
+        `/api/race-schedule?raceNumber=${currentRaceNumForSchedule}`,
+        { cache: 'no-store' }
+      )
+      const schedJson = await schedRes.json()
+      setWeekendSchedule(schedJson.success ? schedJson.schedule : null)
+    } catch {
+      setWeekendSchedule(null)
+    }
 
     const { data: membersData } = await supabase
       .from('league_members')
@@ -868,6 +881,23 @@ const standings = (() => {
   }
 
   const currentRaceNum = league.current_race || league.start_race
+  const isFinalRace = currentRaceNum >= (league?.end_race || 36)
+  const formatEt = (iso: string | null | undefined) => {
+    if (!iso) return null
+    try {
+      return new Date(iso).toLocaleString('en-US', {
+        timeZone: 'America/New_York',
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZoneName: 'short',
+      })
+    } catch {
+      return null
+    }
+  }
   const raceLabel = raceInfo
     ? `Race ${currentRaceNum} – ${raceInfo.track || raceInfo.name}`
     : `Race ${currentRaceNum}`
@@ -984,9 +1014,28 @@ const standings = (() => {
     )}
   </p>
 </div>
-                        <div className="text-base text-gray-600 space-y-1">
-              <div><span className="font-medium">Teams:</span> {members.length} / {league.max_teams}</div>
-              <div><span className="font-medium">Current:</span> {raceLabel}</div>
+            <div className="text-base text-gray-600 space-y-1">
+              <div>
+                <span className="font-medium">Teams:</span> {members.length} / {league.max_teams}
+              </div>
+              <div>
+                <span className="font-medium">Current:</span> {raceLabel}
+              </div>
+
+              {(league.current_race || league.start_race) === 1 &&
+                weekendSchedule?.rows?.length > 0 && (
+                  <div className="text-sm font-medium text-gray-700 pt-1">
+                    Daytona Speedweeks
+                  </div>
+                )}
+
+              {weekendSchedule?.rows?.map((row: any) => (
+                <div key={row.key} className="text-sm text-gray-500">
+                  <span className="font-medium text-gray-600">{row.label}:</span>{' '}
+                  {formatEt(row.startUtc)}
+                </div>
+              ))}
+
               <div className="pt-2">
                 <Link
                   href={`/league/${leagueId}/live`}
@@ -1490,15 +1539,27 @@ const standings = (() => {
 		  >
 			Clear Assignments
 		  </button>
+		{!isFinalRace ? (
 		  <button
 			onClick={advanceToNextRace}
 			disabled={advancing || leagueLocked}
 			className="bg-red-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-red-700 disabled:opacity-50"
 		  >
-            {advancing
-              ? 'Advancing...'
-              : `Advance to Race ${currentRaceNum + 1}`}
-          </button>
+			{advancing
+			  ? 'Advancing...'
+			  : `Advance to Race ${currentRaceNum + 1}`}
+		  </button>
+		) : (
+		  !leagueLocked && (
+			<button
+			  onClick={endSeason}
+			  disabled={advancing}
+			  className="bg-amber-700 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-amber-800 disabled:opacity-50"
+			>
+			  End Season & Lock League
+			</button>
+		  )
+		)}
         </div>
       </div>
     )}

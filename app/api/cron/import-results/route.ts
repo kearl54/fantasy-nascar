@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import {
   getLatestCompletedPointsRace,
   getResultsForPointsRace,
+  getDaytonaDuelBonusPoints,
 } from '@/lib/nascar-cdn'
 
 function getSupabase() {
@@ -87,6 +88,18 @@ export async function GET(req: NextRequest) {
         continue
       }
 
+      // Daytona only: Duel top-10 points (10..1 per duel), keyed by car number
+      let duelBonusByCar = new Map<string, number>()
+      if (raceNumber === 1) {
+        try {
+          const year =
+            (league as any).season_year || new Date().getFullYear()
+          duelBonusByCar = await getDaytonaDuelBonusPoints(year)
+        } catch (e) {
+          console.error('Daytona duel bonus fetch failed:', e)
+        }
+      }
+
       // Build a lookup of official results by driver name
       const byName = new Map(
         parsed.results.map((r) => [normalizeName(r.driverName), r])
@@ -145,28 +158,125 @@ export async function GET(req: NextRequest) {
 
         if (!result) continue
 
+        const carKey = String(result.carNumber ?? '')
+          .replace(/^0+/, '')
+          .trim()
+        const duelPts =
+          raceNumber === 1 ? (duelBonusByCar.get(carKey) || 0) : 0
+        const totalPoints = (Number(result.points) || 0) + duelPts
+
         const { error } = await supabase
-		  .from('assignments')
-		  .update({
-			finish_position: result.finish,
-			points_earned: result.points,
-			stage_points: result.stagePoints,
-			stage1_points: result.stage1 ?? 0,   // stage finishing position
-			stage2_points: result.stage2 ?? 0,
-			stage3_points: result.stage3 ?? 0,
-		  })
-		  .eq('id', a.id)
+          .from('assignments')
+          .update({
+            finish_position: result.finish,
+            points_earned: totalPoints,
+            stage_points: result.stagePoints,
+            stage1_points: result.stage1 ?? 0,
+            stage2_points: result.stage2 ?? 0,
+            stage3_points: result.stage3 ?? 0,
+          })
+          .eq('id', a.id)
 
         if (!error) updated++
       }
 
-      results.push({
+            results.push({
         leagueId: league.id,
         raceNumber,
         status: 'scored',
         updated,
         raceName: parsed.raceName,
       })
+
+      // Auto end season after final race is scored
+      const endRace = league.end_race || 36
+      if (
+        raceNumber === endRace &&
+        updated > 0 &&
+        league.status !== 'completed'
+      ) {
+        try {
+          const { data: members } = await supabase
+            .from('league_members')
+            .select('user_id, team_name')
+            .eq('league_id', league.id)
+
+          const { data: allAssign } = await supabase
+            .from('assignments')
+            .select('user_id, points_earned, finish_position, race_number')
+            .eq('league_id', league.id)
+
+          const standings = (members || [])
+            .map((m) => {
+              const rows = (allAssign || []).filter((a) => a.user_id === m.user_id)
+              const totalPoints = rows.reduce(
+                (sum, a) => sum + (a.points_earned || 0),
+                0
+              )
+              const wins = rows.filter((a) => a.finish_position === 1).length
+              const top5s = rows.filter(
+                (a) => a.finish_position && a.finish_position <= 5
+              ).length
+              const top10s = rows.filter(
+                (a) => a.finish_position && a.finish_position <= 10
+              ).length
+              return {
+                user_id: m.user_id,
+                team_name: m.team_name,
+                totalPoints,
+                wins,
+                top5s,
+                top10s,
+              }
+            })
+            .sort((a, b) => b.totalPoints - a.totalPoints)
+
+          const finalStandings = standings.map((s, idx) => ({
+            place: idx + 1,
+            ...s,
+          }))
+
+          const seasonYear =
+            (league as any).season_year || new Date().getFullYear()
+
+          const { data: existingHistory } = await supabase
+            .from('season_history')
+            .select('id')
+            .eq('league_id', league.id)
+            .eq('season_year', seasonYear)
+            .limit(1)
+
+          if (!existingHistory?.length) {
+            await supabase.from('season_history').insert({
+              league_id: league.id,
+              season_year: seasonYear,
+              end_race: endRace,
+              standings: finalStandings,
+              completed_at: new Date().toISOString(),
+            })
+          }
+
+          await supabase
+            .from('leagues')
+            .update({ status: 'completed' })
+            .eq('id', league.id)
+
+          results.push({
+            leagueId: league.id,
+            raceNumber,
+            status: 'season_ended',
+            champion: finalStandings[0]?.team_name ?? null,
+          })
+        } catch (e: any) {
+          console.error('Auto end season failed:', e)
+          results.push({
+            leagueId: league.id,
+            raceNumber,
+            status: 'season_end_error',
+            error: e.message || 'Failed to end season',
+          })
+        }
+      }
     }
 
     return NextResponse.json({
