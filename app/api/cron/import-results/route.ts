@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     // Load active leagues
     const { data: leagues, error: leaguesError } = await supabase
       .from('leagues')
-      .select('id, current_race')
+      .select('id, current_race, start_race, end_race, status, season_year')
       .in('status', ['setup', 'active', 'in_progress', 'open'])
 
     if (leaguesError) {
