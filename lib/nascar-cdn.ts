@@ -410,3 +410,49 @@ export async function getWeekendSchedule(
     rows,
   }
 }
+
+export type DuelBonusMap = Map<string, number> // car number -> total duel points
+
+/**
+ * Daytona only: top-10 finish points from both Duels (10..1 each).
+ * Keyed by normalized car number.
+ */
+export async function getDaytonaDuelBonusPoints(
+  year: number = 2027
+): Promise<DuelBonusMap> {
+  const list = await fetchRaceList(year, 1)
+  const duels = list
+    .filter((r) => {
+      const n = (r.race_name || '').toLowerCase()
+      const t = (r.track_name || '').toLowerCase()
+      return t.includes('daytona') && n.includes('duel')
+    })
+    .sort(
+      (a, b) =>
+        new Date(a.race_date).getTime() - new Date(b.race_date).getTime()
+    )
+
+  const bonus: DuelBonusMap = new Map()
+
+  const normalizeCar = (n: string | number | undefined) =>
+    String(n ?? '').replace(/^0+/, '').trim()
+
+  for (const duel of duels) {
+    // Skip if not finished yet
+    if (!duel.winner_driver_id && !duel.inspection_complete) continue
+
+    const feed = await fetchWeekendFeed(year, 1, duel.race_id)
+    const results = feed?.weekend_race?.[0]?.results || []
+
+    for (const row of results) {
+      const finish = Number(row.finishing_position)
+      if (!finish || finish < 1 || finish > 10) continue
+      const pts = 11 - finish // 1→10, 10→1
+      const car = normalizeCar(row.car_number || row.official_car_number)
+      if (!car) continue
+      bonus.set(car, (bonus.get(car) || 0) + pts)
+    }
+  }
+
+  return bonus
+}
