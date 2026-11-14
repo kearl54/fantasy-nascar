@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
+import Image from 'next/image'
+import Link from 'next/link'
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -19,10 +21,13 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
+import Image from 'next/image'
+import Link from 'next/link'
+
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
@@ -33,9 +38,23 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <header className="w-full border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
+            <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-center sm:justify-start">
+              <Link href="/" className="inline-flex items-center">
+                <Image
+                  src="/racerpicks-logo.png"
+                  alt="RacerPicks"
+                  width={220}
+                  height={60}
+                  className="h-10 w-auto sm:h-12"
+                  priority
+                />
+              </Link>
+            </div>
+          </header>
           {children}
         </ThemeProvider>
       </body>
     </html>
-  );
+  )
 }
