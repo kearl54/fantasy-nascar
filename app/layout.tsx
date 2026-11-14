@@ -36,7 +36,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <header className="w-full border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
-            <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-center sm:justify-start">
+            <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-center">
               <Link href="/" className="inline-flex items-center">
                 <Image
                   src="/racerpicks-logo.png"
