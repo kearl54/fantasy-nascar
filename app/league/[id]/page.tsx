@@ -44,6 +44,7 @@ function LeagueContent() {
 
   const [membersOpen, setMembersOpen] = useState(false)
   const [toolsOpen, setToolsOpen] = useState(false)
+  const [toolsAcknowledged, setToolsAcknowledged] = useState(false)
   
   const [endingSeason, setEndingSeason] = useState(false)
   
@@ -1328,7 +1329,11 @@ const standings = (() => {
   <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 space-y-6">
     <button
       type="button"
-      onClick={() => setToolsOpen(!toolsOpen)}
+      onClick={() => {
+	    const next = !toolsOpen
+	    setToolsOpen(next)
+	    if (!next) setToolsAcknowledged(false)
+	  }}
       className="w-full flex items-center justify-between text-left"
     >
       <h2 className="text-xl font-bold text-amber-900">Commissioner Tools</h2>
@@ -1338,7 +1343,36 @@ const standings = (() => {
     </button>
 
     {toolsOpen && (
-      <div className="space-y-6">
+	  <div className="space-y-6">
+		<div className="rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3 text-sm text-red-950">
+		  <p className="font-bold text-base mb-1">Manual override — rare use only</p>
+		  <p className="mb-2">
+			These tools change live league data (driver assignments, points, pick
+			order, and season status). Prefer the automatic process. Use this
+			section only when automation did not run or produced a clear error.
+		  </p>
+		  <p className="font-medium mb-3">
+			If you are unsure, do not make changes — contact support first.
+		  </p>
+		  		  <label className="flex items-start gap-2 cursor-pointer">
+			<input
+			  type="checkbox"
+			  checked={toolsAcknowledged}
+			  onChange={(e) => setToolsAcknowledged(e.target.checked)}
+			  className="mt-1 h-4 w-4"
+			/>
+			<span>
+			  I understand these actions can permanently change league data.
+			</span>
+		  </label>
+		  {!toolsAcknowledged && (
+			<p className="text-xs text-red-800 mt-2">
+			  Check the box above to enable the buttons.
+			</p>
+		  )}
+		</div>
+
+		{/* keep all your existing commissioner buttons BELOW this */}
         {message && (
           <p className="text-green-700 text-base mt-2">{message}</p>
         )}
@@ -1442,14 +1476,14 @@ const standings = (() => {
           <div className="flex flex-wrap gap-3 mt-4">
             <button
               onClick={calculateAndSavePoints}
-              disabled={scoring || leagueLocked}
+              disabled={scoring || leagueLocked} || !toolsAcknowledged}
               className="bg-green-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-green-700 disabled:opacity-50"
             >
               {scoring ? 'Saving...' : 'Calculate & Save Points'}
             </button>
             <button
               onClick={importResults}
-              disabled={importing || leagueLocked}
+              disabled={importing || leagueLocked} || !toolsAcknowledged}
               className="bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-indigo-700 disabled:opacity-50"
             >
               {importing ? 'Importing...' : 'Import Official Results'}
@@ -1508,7 +1542,7 @@ const standings = (() => {
             </p>
             <button
               onClick={endSeason}
-              disabled={endingSeason}
+              disabled={endingSeason} || !toolsAcknowledged}
               className="bg-amber-700 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-amber-800 disabled:opacity-50"
             >
               {endingSeason ? 'Ending Season...' : 'End Season & Lock League'}
@@ -1527,14 +1561,14 @@ const standings = (() => {
         <div className="pt-4 border-t border-amber-200 flex flex-wrap gap-3">
 		  <button
 			onClick={processAssignments}
-			disabled={processing || leagueLocked}
+			disabled={processing || leagueLocked || !toolsAcknowledged}
 			className="bg-green-600 text-white px-5 py-2.5 rounded-lg text-base font-medium disabled:opacity-50"
 		  >
 			{processing ? 'Processing...' : 'Process Picks & Assign Drivers'}
 		  </button>
 		  <button
 			onClick={clearAssignments}
-			disabled={processing || leagueLocked}
+			disabled={processing || leagueLocked || !toolsAcknowledged}
 			className="bg-gray-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-gray-700 disabled:opacity-50"
 		  >
 			Clear Assignments
@@ -1542,7 +1576,7 @@ const standings = (() => {
 		{!isFinalRace ? (
 		  <button
 			onClick={advanceToNextRace}
-			disabled={advancing || leagueLocked}
+			disabled={advancing || leagueLocked || !toolsAcknowledged}
 			className="bg-red-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-red-700 disabled:opacity-50"
 		  >
 			{advancing
@@ -1553,7 +1587,7 @@ const standings = (() => {
 		  !leagueLocked && (
 			<button
 			  onClick={endSeason}
-			  disabled={advancing}
+			  disabled={advancing} || !toolsAcknowledged}
 			  className="bg-amber-700 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-amber-800 disabled:opacity-50"
 			>
 			  End Season & Lock League
