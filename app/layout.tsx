@@ -21,9 +21,6 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-import Image from 'next/image'
-import Link from 'next/link'
-
 export default function RootLayout({
   children,
 }: Readonly<{
