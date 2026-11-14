@@ -1476,14 +1476,14 @@ const standings = (() => {
           <div className="flex flex-wrap gap-3 mt-4">
             <button
               onClick={calculateAndSavePoints}
-              disabled={scoring || leagueLocked} || !toolsAcknowledged}
+              disabled={scoring || leagueLocked || !toolsAcknowledged}
               className="bg-green-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-green-700 disabled:opacity-50"
             >
               {scoring ? 'Saving...' : 'Calculate & Save Points'}
             </button>
             <button
               onClick={importResults}
-              disabled={importing || leagueLocked} || !toolsAcknowledged}
+              disabled={importing || leagueLocked || !toolsAcknowledged}
               className="bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-indigo-700 disabled:opacity-50"
             >
               {importing ? 'Importing...' : 'Import Official Results'}
@@ -1542,7 +1542,7 @@ const standings = (() => {
             </p>
             <button
               onClick={endSeason}
-              disabled={endingSeason} || !toolsAcknowledged}
+              disabled={endingSeason || !toolsAcknowledged}
               className="bg-amber-700 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-amber-800 disabled:opacity-50"
             >
               {endingSeason ? 'Ending Season...' : 'End Season & Lock League'}
@@ -1587,7 +1587,7 @@ const standings = (() => {
 		  !leagueLocked && (
 			<button
 			  onClick={endSeason}
-			  disabled={advancing} || !toolsAcknowledged}
+			  disabled={advancing || !toolsAcknowledged}
 			  className="bg-amber-700 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-amber-800 disabled:opacity-50"
 			>
 			  End Season & Lock League
