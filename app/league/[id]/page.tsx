@@ -1156,8 +1156,7 @@ const standings = (() => {
             </div>
           )}
           <h2 className="text-xl font-bold mb-4">Pick Order – {raceLabel}</h2>
-          <h2 className="text-xl font-bold mb-4">Pick Order – {raceLabel}</h2>
-          {pickOrder.length === 0 ? (
+         {pickOrder.length === 0 ? (
             <p className="text-gray-500 text-base">No pick order set yet.</p>
           ) : (
             <ol className="list-decimal list-inside space-y-2 text-base">
