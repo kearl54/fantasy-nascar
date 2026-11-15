@@ -883,6 +883,11 @@ const standings = (() => {
 
   const currentRaceNum = league.current_race || league.start_race
   const isFinalRace = currentRaceNum >= (league?.end_race || 36)
+    // Matches vercel.json process-picks crons (7:00 AM ET)
+  const picksDeadlineLabel =
+    currentRaceNum === 1
+      ? 'Thursday, 7:00 AM Eastern'
+      : 'Friday, 7:00 AM Eastern'
   const formatEt = (iso: string | null | undefined) => {
     if (!iso) return null
     try {
@@ -1136,6 +1141,21 @@ const standings = (() => {
 
         {/* 1. Pick Order */}
         <div className="bg-white rounded-2xl shadow-sm border p-6">
+		   {!leagueLocked && (
+            <div className="mb-4 rounded-xl border-2 border-orange-400 bg-orange-50 px-4 py-3 text-orange-950">
+              <p className="font-bold text-base">
+                Submit picks deadline
+              </p>
+              <p className="text-sm mt-1">
+                Ranked lists must be submitted before{' '}
+                <span className="font-semibold">{picksDeadlineLabel}</span>
+                {' '}
+                (when drivers are assigned automatically).
+                Lists submitted after that may not be used.
+              </p>
+            </div>
+          )}
+          <h2 className="text-xl font-bold mb-4">Pick Order – {raceLabel}</h2>
           <h2 className="text-xl font-bold mb-4">Pick Order – {raceLabel}</h2>
           {pickOrder.length === 0 ? (
             <p className="text-gray-500 text-base">No pick order set yet.</p>
