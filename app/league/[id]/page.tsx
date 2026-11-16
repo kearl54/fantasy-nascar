@@ -46,6 +46,14 @@ function LeagueContent() {
   const [toolsOpen, setToolsOpen] = useState(false)
   const [toolsAcknowledged, setToolsAcknowledged] = useState(false)
   
+  const [editAssignments, setEditAssignments] = useState<
+  { user_id: string; driver_id: number; team_name: string }[]
+  >([])
+  const [allDriversForEdit, setAllDriversForEdit] = useState<
+  { id: number; name: string; car_number: string }[]
+  >([])
+  const [savingPickList, setSavingPickList] = useState(false)
+  
   const [endingSeason, setEndingSeason] = useState(false)
   
   const [myTeamName, setMyTeamName] = useState('')
@@ -139,6 +147,39 @@ function LeagueContent() {
       .eq('race_number', currentRace)
 
     setAssignments(assignData || [])
+	
+	      // Commissioner pick-list editor snapshot
+      const { data: activeDrivers } = await supabase
+        .from('drivers')
+        .select('id, name, car_number')
+        .eq('is_active', true)
+        .order('car_number')
+
+      setAllDriversForEdit(activeDrivers || [])
+
+      const currentRaceForEdit = leagueData.current_race || leagueData.start_race
+      const { data: assignForEdit } = await supabase
+        .from('assignments')
+        .select('user_id, driver_id')
+        .eq('league_id', leagueId)
+        .eq('race_number', currentRaceForEdit)
+
+      const { data: membersForEdit } = await supabase
+        .from('league_members')
+        .select('user_id, team_name')
+        .eq('league_id', leagueId)
+
+      const memberName = new Map(
+        (membersForEdit || []).map((m: any) => [m.user_id, m.team_name || 'Unknown'])
+      )
+
+      setEditAssignments(
+        (assignForEdit || []).map((a: any) => ({
+          user_id: a.user_id,
+          driver_id: a.driver_id,
+          team_name: memberName.get(a.user_id) || 'Unknown',
+        }))
+      )
 
     const { data: allAssignData } = await supabase
       .from('assignments')
@@ -299,6 +340,47 @@ setResultsAssignments(assignData || [])
     setOrderedMembers(newList)
   }
 
+    const savePickListEdits = async () => {
+    if (!league || !isCommissioner || !toolsAcknowledged) return
+    if (leagueLocked) {
+      setError('League is locked.')
+      return
+    }
+
+    const driverIds = editAssignments.map((a) => a.driver_id)
+    const unique = new Set(driverIds)
+    if (unique.size !== driverIds.length) {
+      setError('Each driver can only be assigned to one team.')
+      return
+    }
+
+    setSavingPickList(true)
+    setError('')
+    setMessage('')
+
+    try {
+      const raceNumber = league.current_race || league.start_race
+
+      for (const row of editAssignments) {
+        const { error } = await supabase
+          .from('assignments')
+          .update({ driver_id: row.driver_id })
+          .eq('league_id', leagueId)
+          .eq('race_number', raceNumber)
+          .eq('user_id', row.user_id)
+
+        if (error) throw error
+      }
+
+      setMessage('Pick list updated. Points were left unchanged.')
+      await loadData()
+    } catch (err: any) {
+      setError(err.message || 'Failed to save pick list')
+    }
+
+    setSavingPickList(false)
+  }
+  
   const processAssignments = async () => {
     if (!league || !isCommissioner) return
     setProcessing(true)
@@ -1612,8 +1694,71 @@ const standings = (() => {
 			  End Season & Lock League
 			</button>
 		  )
-		)}
+				)}
         </div>
+
+        <div className="pt-4 border-t border-amber-200">
+          <h3 className="font-semibold text-base mb-2">Edit Pick List</h3>
+          <p className="text-sm text-gray-600 mb-3">
+            Fix incorrect driver assignments for the current race. Existing
+            points are not changed.
+          </p>
+
+          {editAssignments.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              No assignments for this race yet.
+            </p>
+          ) : (
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {editAssignments.map((row) => (
+                <div
+                  key={row.user_id}
+                  className="flex flex-col sm:flex-row sm:items-center gap-2 bg-white border rounded-lg px-3 py-2"
+                >
+                  <span className="font-medium text-sm sm:w-40 shrink-0">
+                    {row.team_name}
+                  </span>
+                  <select
+                    className="flex-1 border rounded-lg px-2 py-1.5 text-sm"
+                    value={row.driver_id}
+                    disabled={!toolsAcknowledged || leagueLocked}
+                    onChange={(e) => {
+                      const newId = Number(e.target.value)
+                      setEditAssignments((prev) =>
+                        prev.map((r) =>
+                          r.user_id === row.user_id
+                            ? { ...r, driver_id: newId }
+                            : r
+                        )
+                      )
+                    }}
+                  >
+                    {allDriversForEdit.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.car_number} – {d.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={savePickListEdits}
+            disabled={
+              savingPickList ||
+              !toolsAcknowledged ||
+              leagueLocked ||
+              editAssignments.length === 0
+            }
+            className="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+          >
+            {savingPickList ? 'Saving...' : 'Save Pick List'}
+          </button>
+        </div>
+
       </div>
     )}
   </div>
