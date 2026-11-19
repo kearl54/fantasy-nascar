@@ -46,6 +46,10 @@ function LeagueContent() {
   const [toolsOpen, setToolsOpen] = useState(false)
   const [toolsAcknowledged, setToolsAcknowledged] = useState(false)
   
+  const [resultsToolsOpen, setResultsToolsOpen] = useState(false)
+  const [pickOrderToolsOpen, setPickOrderToolsOpen] = useState(false)
+  const [pickListToolsOpen, setPickListToolsOpen] = useState(false)
+  
   const [editAssignments, setEditAssignments] = useState<
   { user_id: string; driver_id: number; team_name: string }[]
   >([])
@@ -1430,11 +1434,16 @@ const standings = (() => {
   <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 space-y-6">
     <button
       type="button"
-      onClick={() => {
-	    const next = !toolsOpen
-	    setToolsOpen(next)
-	    if (!next) setToolsAcknowledged(false)
-	  }}
+            onClick={() => {
+        const next = !toolsOpen
+        setToolsOpen(next)
+        if (!next) {
+          setToolsAcknowledged(false)
+          setResultsToolsOpen(false)
+          setPickOrderToolsOpen(false)
+          setPickListToolsOpen(false)
+        }
+      }}
       className="w-full flex items-center justify-between text-left"
     >
       <h2 className="text-xl font-bold text-amber-900">Commissioner Tools</h2>
@@ -1482,128 +1491,157 @@ const standings = (() => {
         )}
 
         <div>
-          <h3 className="font-semibold text-base mb-3">Enter Results & Points</h3>
-          <div className="space-y-4">
-            {assignments.map((a) => {
-              const member = members.find((m) => m.user_id === a.user_id)
-              const finishPos = parseInt(finishInput[a.id] || '0', 10)
-              const previewPts =
-                finishPos >= 1 && finishPos <= 40
-                  ? getFinishPoints(finishPos) +
-                    (parseInt(stageInput[a.id] || '0') || 0) +
-                    (fastestLapInput[a.id] ? 1 : 0)
-                  : a.points_earned || 0
-              return (
-                <div key={a.id} className="bg-white rounded-xl p-4 border">
-                  <div className="flex justify-between mb-3">
-                    <div>
-                      <div className="font-medium text-base">
-                        {member?.team_name}
+        <div className="pt-4 border-t border-amber-200">
+          <button
+            type="button"
+            onClick={() => setResultsToolsOpen(!resultsToolsOpen)}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <h3 className="font-semibold text-base">Enter Results & Points</h3>
+            <span className="text-xl text-amber-700">
+              {resultsToolsOpen ? '−' : '+'}
+            </span>
+          </button>
+
+          {resultsToolsOpen && (
+            <div className="mt-3 space-y-3">
+              <div className="space-y-4">
+                {assignments.map((a) => {
+                  const member = members.find((m) => m.user_id === a.user_id)
+                  const finishPos = parseInt(finishInput[a.id] || '0', 10)
+                  const previewPts =
+                    finishPos >= 1 && finishPos <= 40
+                      ? getFinishPoints(finishPos) +
+                        (parseInt(stageInput[a.id] || '0') || 0) +
+                        (fastestLapInput[a.id] ? 1 : 0)
+                      : a.points_earned || 0
+                  return (
+                    <div key={a.id} className="bg-white rounded-xl p-4 border">
+                      <div className="flex justify-between mb-3">
+                        <div>
+                          <div className="font-medium text-base">
+                            {member?.team_name}
+                          </div>
+                          <div className="text-base text-gray-500">
+                            {a.drivers?.car_number
+                              ? `${a.drivers.car_number} - ${a.drivers.name}`
+                              : a.drivers?.name}
+                          </div>
+                        </div>
+                        <div className="font-bold text-base">{previewPts} pts</div>
                       </div>
-                      <div className="text-base text-gray-500">
-                        {a.drivers?.car_number
-                          ? `${a.drivers.car_number} - ${a.drivers.name}`
-                          : a.drivers?.name}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-sm text-gray-500 mb-1">
+                            Finish
+                          </label>
+                          <select
+                            value={finishInput[a.id] || ''}
+                            onChange={(e) =>
+                              setFinishInput({
+                                ...finishInput,
+                                [a.id]: e.target.value,
+                              })
+                            }
+                            className="w-full border rounded-lg px-2 py-2 text-base"
+                          >
+                            <option value="">Select...</option>
+                            {Array.from({ length: 40 }, (_, i) => i + 1).map(
+                              (pos) => (
+                                <option key={pos} value={pos}>
+                                  {pos}
+                                </option>
+                              )
+                            )}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-500 mb-1">
+                            Stage Pts
+                          </label>
+                          <select
+                            value={stageInput[a.id] || '0'}
+                            onChange={(e) =>
+                              setStageInput({
+                                ...stageInput,
+                                [a.id]: e.target.value,
+                              })
+                            }
+                            className="w-full border rounded-lg px-2 py-2 text-base"
+                          >
+                            {Array.from({ length: 21 }, (_, i) => i).map((pts) => (
+                              <option key={pts} value={pts}>
+                                {pts}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex items-end">
+                          <label className="flex items-center gap-2 text-base">
+                            <input
+                              type="checkbox"
+                              checked={fastestLapInput[a.id] || false}
+                              onChange={(e) =>
+                                setFastestLapInput({
+                                  ...fastestLapInput,
+                                  [a.id]: e.target.checked,
+                                })
+                              }
+                            />
+                            Fastest Lap
+                          </label>
+                        </div>
                       </div>
                     </div>
-                    <div className="font-bold text-base">{previewPts} pts</div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-sm text-gray-500 mb-1">
-                        Finish
-                      </label>
-                      <select
-                        value={finishInput[a.id] || ''}
-                        onChange={(e) =>
-                          setFinishInput({
-                            ...finishInput,
-                            [a.id]: e.target.value,
-                          })
-                        }
-                        className="w-full border rounded-lg px-2 py-2 text-base"
-                      >
-                        <option value="">Select...</option>
-                        {Array.from({ length: 40 }, (_, i) => i + 1).map(
-                          (pos) => (
-                            <option key={pos} value={pos}>
-                              {pos}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-500 mb-1">
-                        Stage Pts
-                      </label>
-                      <select
-                        value={stageInput[a.id] || '0'}
-                        onChange={(e) =>
-                          setStageInput({
-                            ...stageInput,
-                            [a.id]: e.target.value,
-                          })
-                        }
-                        className="w-full border rounded-lg px-2 py-2 text-base"
-                      >
-                        {Array.from({ length: 21 }, (_, i) => i).map((pts) => (
-                          <option key={pts} value={pts}>
-                            {pts}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex items-end">
-                      <label className="flex items-center gap-2 text-base">
-                        <input
-                          type="checkbox"
-                          checked={fastestLapInput[a.id] || false}
-                          onChange={(e) =>
-                            setFastestLapInput({
-                              ...fastestLapInput,
-                              [a.id]: e.target.checked,
-                            })
-                          }
-                        />
-                        Fastest Lap
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-          <div className="flex flex-wrap gap-3 mt-4">
-            <button
-              onClick={calculateAndSavePoints}
-              disabled={scoring || leagueLocked || !toolsAcknowledged}
-              className="bg-green-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-green-700 disabled:opacity-50"
-            >
-              {scoring ? 'Saving...' : 'Calculate & Save Points'}
-            </button>
-            <button
-              onClick={importResults}
-              disabled={importing || leagueLocked || !toolsAcknowledged}
-              className="bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-indigo-700 disabled:opacity-50"
-            >
-              {importing ? 'Importing...' : 'Import Official Results'}
-            </button>
-          </div>
+                  )
+                })}
+              </div>
+              <div className="flex flex-wrap gap-3 mt-4">
+                <button
+                  onClick={calculateAndSavePoints}
+                  disabled={scoring || leagueLocked || !toolsAcknowledged}
+                  className="bg-green-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-green-700 disabled:opacity-50"
+                >
+                  {scoring ? 'Saving...' : 'Calculate & Save Points'}
+                </button>
+                <button
+                  onClick={importResults}
+                  disabled={importing || leagueLocked || !toolsAcknowledged}
+                  className="bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {importing ? 'Importing...' : 'Import Official Results'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="pt-4 border-t border-amber-200">
-          <h3 className="font-semibold text-base mb-3">Set Pick Order</h3>
+          <button
+            type="button"
+            onClick={() => setPickOrderToolsOpen(!pickOrderToolsOpen)}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <h3 className="font-semibold text-base">Set Pick Order</h3>
+            <span className="text-xl text-amber-700">
+              {pickOrderToolsOpen ? '−' : '+'}
+            </span>
+          </button>
+
+          {pickOrderToolsOpen && (
+            <div className="mt-3 space-y-3">
           <div className="flex gap-2 mb-3">
             <button
               onClick={handleRandomize}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg text-base"
+              disabled={!toolsAcknowledged || leagueLocked}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg text-base disabled:opacity-50"
             >
               Randomize
             </button>
             <button
               onClick={handleManualSave}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-base"
+              disabled={!toolsAcknowledged || leagueLocked}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-base disabled:opacity-50"
             >
               Save Order
             </button>
@@ -1632,8 +1670,10 @@ const standings = (() => {
                 </button>
               </li>
             ))}
-          </ul>
-                </div>
+           </ul>
+            </div>
+          )}
+        </div>
 
         {seasonComplete && league?.status !== 'completed' && (
           <div className="pt-4 border-t border-amber-200">
@@ -1698,70 +1738,80 @@ const standings = (() => {
         </div>
 
         <div className="pt-4 border-t border-amber-200">
-          <h3 className="font-semibold text-base mb-2">Edit Pick List</h3>
-          <p className="text-sm text-gray-600 mb-3">
-            Fix incorrect driver assignments for the current race. Existing
-            points are not changed.
-          </p>
-
-          {editAssignments.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              No assignments for this race yet.
-            </p>
-          ) : (
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {editAssignments.map((row) => (
-                <div
-                  key={row.user_id}
-                  className="flex flex-col sm:flex-row sm:items-center gap-2 bg-white border rounded-lg px-3 py-2"
-                >
-                  <span className="font-medium text-sm sm:w-40 shrink-0">
-                    {row.team_name}
-                  </span>
-                  <select
-                    className="flex-1 border rounded-lg px-2 py-1.5 text-sm"
-                    value={row.driver_id}
-                    disabled={!toolsAcknowledged || leagueLocked}
-                    onChange={(e) => {
-                      const newId = Number(e.target.value)
-                      setEditAssignments((prev) =>
-                        prev.map((r) =>
-                          r.user_id === row.user_id
-                            ? { ...r, driver_id: newId }
-                            : r
-                        )
-                      )
-                    }}
-                  >
-                    {allDriversForEdit.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.car_number} – {d.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-            </div>
-          )}
-
           <button
             type="button"
-            onClick={savePickListEdits}
-            disabled={
-              savingPickList ||
-              !toolsAcknowledged ||
-              leagueLocked ||
-              editAssignments.length === 0
-            }
-            className="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+            onClick={() => setPickListToolsOpen(!pickListToolsOpen)}
+            className="w-full flex items-center justify-between text-left"
           >
-            {savingPickList ? 'Saving...' : 'Save Pick List'}
+            <h3 className="font-semibold text-base">Edit Pick List</h3>
+            <span className="text-xl text-amber-700">
+              {pickListToolsOpen ? '−' : '+'}
+            </span>
           </button>
-        </div>
 
-      </div>
-    )}
-  </div>
+          {pickListToolsOpen && (
+            <div className="mt-3 space-y-3">
+              <p className="text-sm text-gray-600">
+                Fix incorrect driver assignments for the current race. Existing
+                points are not changed.
+              </p>
+
+              {editAssignments.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  No assignments for this race yet.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {editAssignments.map((row) => (
+                    <div
+                      key={row.user_id}
+                      className="flex flex-col sm:flex-row sm:items-center gap-2 bg-white border rounded-lg px-3 py-2"
+                    >
+                      <span className="font-medium text-sm sm:w-40 shrink-0">
+                        {row.team_name}
+                      </span>
+                      <select
+                        className="flex-1 border rounded-lg px-2 py-1.5 text-sm"
+                        value={row.driver_id}
+                        disabled={!toolsAcknowledged || leagueLocked}
+                        onChange={(e) => {
+                          const newId = Number(e.target.value)
+                          setEditAssignments((prev) =>
+                            prev.map((r) =>
+                              r.user_id === row.user_id
+                                ? { ...r, driver_id: newId }
+                                : r
+                            )
+                          )
+                        }}
+                      >
+                        {allDriversForEdit.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.car_number} – {d.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={savePickListEdits}
+                disabled={
+                  savingPickList ||
+                  !toolsAcknowledged ||
+                  leagueLocked ||
+                  editAssignments.length === 0
+                }
+                className="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+              >
+                {savingPickList ? 'Saving...' : 'Save Pick List'}
+              </button>
+            </div>
+          )}
+        </div>
 )}
       </div>
     </div>
