@@ -1812,6 +1812,9 @@ const standings = (() => {
             </div>
           )}
         </div>
+      </div>
+    )}
+  </div>
 )}
       </div>
     </div>
