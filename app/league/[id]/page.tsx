@@ -1490,7 +1490,6 @@ const standings = (() => {
           <p className="text-red-600 text-base mt-2">{error}</p>
         )}
 
-        <div>
         <div className="pt-4 border-t border-amber-200">
           <button
             type="button"
