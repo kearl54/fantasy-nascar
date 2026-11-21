@@ -1699,42 +1699,42 @@ const standings = (() => {
           </div>
         )}
 
-        <div className="pt-4 border-t border-amber-200 flex flex-wrap gap-3">
-		  <button
-			onClick={processAssignments}
-			disabled={processing || leagueLocked || !toolsAcknowledged}
-			className="bg-green-600 text-white px-5 py-2.5 rounded-lg text-base font-medium disabled:opacity-50"
-		  >
-			{processing ? 'Processing...' : 'Process Picks & Assign Drivers'}
-		  </button>
-		  <button
-			onClick={clearAssignments}
-			disabled={processing || leagueLocked || !toolsAcknowledged}
-			className="bg-gray-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-gray-700 disabled:opacity-50"
-		  >
-			Clear Assignments
-		  </button>
-		{!isFinalRace ? (
-		  <button
-			onClick={advanceToNextRace}
-			disabled={advancing || leagueLocked || !toolsAcknowledged}
-			className="bg-red-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-red-700 disabled:opacity-50"
-		  >
-			{advancing
-			  ? 'Advancing...'
-			  : `Advance to Race ${currentRaceNum + 1}`}
-		  </button>
-		) : (
-		  !leagueLocked && (
-			<button
-			  onClick={endSeason}
-			  disabled={advancing || !toolsAcknowledged}
-			  className="bg-amber-700 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-amber-800 disabled:opacity-50"
-			>
-			  End Season & Lock League
-			</button>
-		  )
-				)}
+         <div className="pt-4 border-t border-amber-200 flex flex-wrap gap-3">
+          <button
+            onClick={processAssignments}
+            disabled={processing || leagueLocked || !toolsAcknowledged}
+            className="bg-green-600 text-white px-5 py-2.5 rounded-lg text-base font-medium disabled:opacity-50"
+          >
+            {processing ? 'Processing...' : 'Process Picks & Assign Drivers'}
+          </button>
+          <button
+            onClick={clearAssignments}
+            disabled={processing || leagueLocked || !toolsAcknowledged}
+            className="bg-gray-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-gray-700 disabled:opacity-50"
+          >
+            Clear Assignments
+          </button>
+          {!isFinalRace ? (
+            <button
+              onClick={advanceToNextRace}
+              disabled={advancing || leagueLocked || !toolsAcknowledged}
+              className="bg-red-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-red-700 disabled:opacity-50"
+            >
+              {advancing
+                ? 'Advancing...'
+                : `Advance to Race ${currentRaceNum + 1}`}
+            </button>
+          ) : (
+            !leagueLocked && (
+              <button
+                onClick={endSeason}
+                disabled={advancing || !toolsAcknowledged}
+                className="bg-amber-700 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-amber-800 disabled:opacity-50"
+              >
+                End Season & Lock League
+              </button>
+            )
+          )}
         </div>
 
         <div className="pt-4 border-t border-amber-200">
@@ -1816,7 +1816,6 @@ const standings = (() => {
     )}
   </div>
 )}
-      </div>
     </div>
   )
 }
