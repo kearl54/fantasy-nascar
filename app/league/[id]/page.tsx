@@ -1817,6 +1817,7 @@ const standings = (() => {
   </div>
 )}
     </div>
+  </div>
   )
 }
 
