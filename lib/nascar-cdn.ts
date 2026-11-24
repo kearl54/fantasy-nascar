@@ -87,7 +87,7 @@ const NON_POINTS_KEYWORDS = [
  * Fetch the basic race list for a season.
  */
 export async function fetchRaceList(
-  year: number = 2026,
+  year: number = new Date().getFullYear(),
   seriesId: number = 1
 ): Promise<NascarRaceListItem[]> {
   const url = `${CDN_BASE}/cacher/${year}/race_list_basic.json`;
@@ -224,7 +224,7 @@ export function parseWeekendFeed(
  */
 export async function getResultsForPointsRace(
   pointsRaceNumber: number,
-  year: number = 2026
+  year: number = new Date().getFullYear()
 ): Promise<ParsedRaceResults | null> {
   const list = await fetchRaceList(year, 1);
   const withNumbers = list.map((r) => ({
@@ -252,7 +252,7 @@ export async function getResultsForPointsRace(
  * Convenience: get the most recent completed points race.
  */
 export async function getLatestCompletedPointsRace(
-  year: number = 2026
+  year: number = new Date().getFullYear()
 ): Promise<ParsedRaceResults | null> {
   const list = await fetchRaceList(year, 1);
   const points = list
@@ -287,7 +287,7 @@ export type WeekendScheduleItem = {
  */
 export async function getWeekendSchedule(
   pointsRaceNumber: number,
-  year: number = 2026
+  year: number = new Date().getFullYear()
 ): Promise<WeekendScheduleItem | null> {
   const list = await fetchRaceList(year, 1) // Cup only
   const withNumbers = list.map((r) => ({
@@ -418,7 +418,7 @@ export type DuelBonusMap = Map<string, number> // car number -> total duel point
  * Keyed by normalized car number.
  */
 export async function getDaytonaDuelBonusPoints(
-  year: number = 2027
+  year: number = new Date().getFullYear()
 ): Promise<DuelBonusMap> {
   const list = await fetchRaceList(year, 1)
   const duels = list

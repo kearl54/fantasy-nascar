@@ -7,7 +7,7 @@ import {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { leagueId, raceNumber } = body
+    const { leagueId, raceNumber, year: yearFromBody } = body
 
     // leagueId is still accepted so the rest of your UI doesn’t break,
     // even though this route only returns the results (it doesn’t write to DB).
@@ -19,7 +19,9 @@ export async function POST(req: NextRequest) {
     }
 
     const raceNum = Number(raceNumber)
-    const year = 2026
+    const year =
+      Number(yearFromBody) ||
+      new Date().getFullYear()
 
     // Use the official NASCAR CDN instead of kyleGrealis
     const parsed = await getResultsForPointsRace(raceNum, year)
@@ -33,7 +35,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-        // Convert to the exact shape your existing UI expects
+    // Convert to the exact shape your existing UI expects
     const results = parsed.results.map((r) => {
       // Get stage *finishing positions* (not points)
       let stage1 = 0
@@ -55,8 +57,8 @@ export async function POST(req: NextRequest) {
         driver: r.driverName,
         car: r.carNumber,
         finish: r.finish,
-        points: r.points,           // official NASCAR points (still correct)
-        stage1,                     // now the stage finishing position
+        points: r.points, // official NASCAR points (still correct)
+        stage1, // stage finishing position
         stage2,
         stage3,
         stagePoints: r.stagePoints, // keep total stage points if anything still uses it
@@ -67,10 +69,10 @@ export async function POST(req: NextRequest) {
       success: true,
       results,
       count: results.length,
-      // Extra info you can use later if you want
       raceName: parsed.raceName,
       trackName: parsed.trackName,
       source: 'cf.nascar.com',
+      year,
     })
   } catch (err: any) {
     console.error('Import error:', err)

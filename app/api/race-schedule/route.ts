@@ -9,7 +9,10 @@ export async function GET(req: NextRequest) {
     }
 
     // Cup Series only (helper uses series_id 1)
-    const schedule = await getWeekendSchedule(raceNumber, 2026)
+    const yearParam = new URL(req.url).searchParams.get('year')
+    const year = Number(yearParam) || new Date().getFullYear()
+
+    const schedule = await getWeekendSchedule(raceNumber, year)
     if (!schedule) {
       return NextResponse.json({ error: 'Schedule not found' }, { status: 404 })
     }

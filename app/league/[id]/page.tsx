@@ -59,6 +59,7 @@ function LeagueContent() {
   const [savingPickList, setSavingPickList] = useState(false)
   
   const [endingSeason, setEndingSeason] = useState(false)
+  const [startingSeason, setStartingSeason] = useState(false)
   
   const [myTeamName, setMyTeamName] = useState('')
   const [editingTeamName, setEditingTeamName] = useState(false)
@@ -108,10 +109,12 @@ function LeagueContent() {
 	
 	const currentRaceNumForSchedule = leagueData.current_race || leagueData.start_race
     try {
-      const schedRes = await fetch(
-        `/api/race-schedule?raceNumber=${currentRaceNumForSchedule}`,
-        { cache: 'no-store' }
-      )
+    const seasonYear =
+      leagueData.season_year || new Date().getFullYear()
+    const schedRes = await fetch(
+      `/api/race-schedule?raceNumber=${currentRaceNumForSchedule}&year=${seasonYear}`,
+      { cache: 'no-store' }
+    )
       const schedJson = await schedRes.json()
       setWeekendSchedule(schedJson.success ? schedJson.schedule : null)
     } catch {
@@ -565,8 +568,11 @@ setResultsAssignments(assignData || [])
       const res = await fetch('/api/import-results', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leagueId, raceNumber })
-      })
+        body: JSON.stringify({
+		  leagueId,
+		  raceNumber: league.current_race || league.start_race,
+		  year: league.season_year || new Date().getFullYear(),
+		})
 
       const data = await res.json()
 
@@ -760,6 +766,58 @@ for (const assignment of assignments) {
 	  setEndingSeason(false)
 	}
 
+  const startNewSeason = async () => {
+    if (!league || !isCommissioner) return
+    if (league.status !== 'completed') {
+      setError('Season must be ended and locked before starting a new one.')
+      return
+    }
+
+    const nextYear =
+      (league.season_year || new Date().getFullYear()) + 1
+
+    if (
+      !confirm(
+        `Start the ${nextYear} season?\n\n` +
+          `This will reset to Race 1 and clear assignments, submissions, and pick orders.\n` +
+          `Members, team names, and past season history will be kept.`
+      )
+    ) {
+      return
+    }
+
+    setStartingSeason(true)
+    setError('')
+    setMessage('')
+
+    try {
+      // 1) Clear operational data only
+      await supabase.from('assignments').delete().eq('league_id', leagueId)
+      await supabase.from('submissions').delete().eq('league_id', leagueId)
+      await supabase.from('pick_orders').delete().eq('league_id', leagueId)
+
+      // 2) Reset league for new season
+      const { error } = await supabase
+        .from('leagues')
+        .update({
+          season_year: nextYear,
+          current_race: 1,
+          start_race: 1,
+          end_race: 36,
+          status: 'setup', // or 'active' if you prefer
+        })
+        .eq('id', leagueId)
+
+      if (error) throw error
+
+      setMessage(`${nextYear} season started. Set pick order for Race 1 when ready.`)
+      await loadData()
+    } catch (err: any) {
+      setError(err.message || 'Failed to start new season')
+    }
+
+    setStartingSeason(false)
+  }
 
   const advanceToNextRace = async () => {
     if (!league || !isCommissioner) return
@@ -1691,12 +1749,26 @@ const standings = (() => {
         )}
 
         {league?.status === 'completed' && (
-          <div className="pt-4 border-t border-amber-200">
-            <p className="text-amber-900 font-medium">
-              This season is complete. League is locked.
-            </p>
-          </div>
-        )}
+		  <div className="pt-4 border-t border-amber-200 space-y-3">
+			<p className="text-amber-900 font-medium">
+			  This season is complete. League is locked.
+			</p>
+			<p className="text-sm text-gray-600">
+			  Start the next season to reset to Race 1. Members and past
+			  standings history are kept. Assignments and picks are cleared.
+			</p>
+			<button
+			  type="button"
+			  onClick={startNewSeason}
+			  disabled={startingSeason || !toolsAcknowledged}
+			  className="bg-green-700 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-green-800 disabled:opacity-50"
+			>
+			  {startingSeason
+				? 'Starting...'
+				: `Start ${(league.season_year || new Date().getFullYear()) + 1} Season`}
+			</button>
+		  </div>
+		)}
 
          <div className="pt-4 border-t border-amber-200 flex flex-wrap gap-3">
           <button
