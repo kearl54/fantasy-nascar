@@ -577,8 +577,6 @@ setResultsAssignments(assignData || [])
 
       const data = await res.json()
 
-      const data = await res.json()
-
       if (!res.ok) {
         setError(data.error || 'Import failed')
         setImporting(false)
