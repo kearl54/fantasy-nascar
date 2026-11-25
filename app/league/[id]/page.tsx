@@ -565,14 +565,17 @@ setResultsAssignments(assignData || [])
     try {
       const raceNumber = league.current_race || league.start_race
 
-      const res = await fetch('/api/import-results', {
+       const res = await fetch('/api/import-results', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-		  leagueId,
-		  raceNumber: league.current_race || league.start_race,
-		  year: league.season_year || new Date().getFullYear(),
-		})
+          leagueId,
+          raceNumber: league.current_race || league.start_race,
+          year: league.season_year || new Date().getFullYear(),
+        }),
+      })
+
+      const data = await res.json()
 
       const data = await res.json()
 
